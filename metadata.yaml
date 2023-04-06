@@ -1,0 +1,28 @@
+# This file populates the Overview on Charmhub.
+# See https://juju.is/docs/sdk/metadata-reference for a checklist and guidance.
+
+# The charm package name, no spaces (required)
+# See https://juju.is/docs/sdk/naming#heading--naming-charms for guidance.
+name: osm-mysql-exporter
+display-name: OSM Prometheus MySQL Exporter K8s
+summary: OSM Prometheus MySQL Exporter
+description: |
+  Charm to deploy OSM's Prometheus MySQL Exporter.
+containers:
+  mysql-exporter:
+    resource: image
+resources:
+  image:
+    type: oci-image
+    description: Image of mysql-exporter
+    upstream-source: "bitnami/mysqld-exporter:0.14.0"
+provides:
+  metrics-endpoint:
+    interface: prometheus_scrape
+  grafana-dashboard:
+    interface: grafana_dashboard
+requires:
+  mysql:
+    interface: mysql_client
+  ingress:
+    interface: ingress
