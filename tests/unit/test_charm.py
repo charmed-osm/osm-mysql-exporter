@@ -78,21 +78,6 @@ class TestCharm(unittest.TestCase):
         self.harness.update_config({"mysql-uri": "foobar"})
         self.assertIsInstance(self.harness.model.unit.status, BlockedStatus)
 
-    def test_config_log_changed_invalid(self):
-        """Invalid config change for log-level parameter."""
-        self.harness.set_can_connect("mysql-exporter", True)
-        # Trigger a config-changed event with an updated value
-        self.harness.update_config({"log-level": "foobar"})
-        # Check the charm is in BlockedStatus
-        self.assertIsInstance(self.harness.model.unit.status, BlockedStatus)
-
-    def test_config_log_changed_no_mysql(self):
-        """Valid config change for log-level parameter."""
-        error_message = "No MySQL uri added. MySQL uri needs to be added via config"
-        self.harness.set_can_connect("mysql-exporter", True)
-        self.harness.update_config({"log-level": "INFO"})
-        self.assertEqual(self.harness.model.unit.status, BlockedStatus(error_message))
-
     def test_no_config(self):
         """No database configured in the charm."""
         self.harness.set_can_connect("mysql-exporter", True)

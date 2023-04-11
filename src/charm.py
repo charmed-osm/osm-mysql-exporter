@@ -31,8 +31,6 @@ logger = logging.getLogger(__name__)
 
 PORT = 9104
 
-VALID_LOG_LEVELS = ["info", "debug", "warning", "error", "critical"]
-
 
 class MysqlExporterCharm(CharmBase):
     """Charm the service."""
@@ -129,19 +127,6 @@ class MysqlExporterCharm(CharmBase):
             CharmError: if charm configuration is invalid.
         """
         logger.debug("Validating config")
-        if self.config["log-level"].upper() not in [
-            "TRACE",
-            "DEBUG",
-            "INFO",
-            "WARN",
-            "ERROR",
-            "FATAL",
-        ]:
-            self.unit.status = BlockedStatus(
-                f"invalid log level: {self.model.config['log-level'].upper()}"
-            )
-            raise CharmError("invalid value for log-level option")
-
         if self.model.config.get("mysql-uri"):
             if not self.model.config.get("mysql-uri").startswith("mysql://"):
                 self.unit.status = BlockedStatus(
