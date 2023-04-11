@@ -14,10 +14,6 @@ https://discourse.charmhub.io/t/4208
 
 import logging
 
-from charms.data_platform_libs.v0.data_interfaces import (
-    DatabaseCreatedEvent,
-    DatabaseRequires,
-)
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.nginx_ingress_integrator.v0.ingress import IngressRequires
 from charms.osm_libs.v0.utils import (
@@ -64,11 +60,6 @@ class MysqlExporterCharm(CharmBase):
         self._grafana_dashboards = GrafanaDashboardProvider(
             self, relation_name="grafana-dashboard"
         )
-        self.mysql_client = DatabaseRequires(
-            self,
-            relation_name="mysql",
-            database_name=self.app.name,
-        )
 
         self.framework.observe(
             self.on.mysql_exporter_pebble_ready,
@@ -76,8 +67,6 @@ class MysqlExporterCharm(CharmBase):
         )
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.update_status, self._on_update_status)
-        self.framework.observe(self.mysql_client.on.database_created, self._on_database_created)
-        self.framework.observe(self.on["mysql"].relation_broken, self._on_db_relation_broken)
 
     def _on_mysql_exporter_pebble_ready(self, event):
         """Define and start a workload using the Pebble API.
@@ -88,7 +77,7 @@ class MysqlExporterCharm(CharmBase):
         Learn more about interacting with Pebble at at https://juju.is/docs/sdk/pebble.
         """
         try:
-            self.mysql_uri = self._get_mysql_uri(event)
+            self.mysql_uri = self._get_mysql_uri()
             # Add initial Pebble config layer using the Pebble API
             self.container.add_layer(
                 "mysql-exporter",
@@ -115,13 +104,6 @@ class MysqlExporterCharm(CharmBase):
             event.defer()
             self.unit.status = WaitingStatus("waiting for Pebble API")
 
-    def _get_mysql_relation(self, event):
-        if type(event).__name__ == "RelationBrokenEvent":
-            return None
-        if self.mysql_client.is_resource_created():
-            return list(self.mysql_client.fetch_relation_data().values())[0]
-        return None
-
     def _get_mysql_config(self):
         try:
             self._validate_config()
@@ -129,28 +111,16 @@ class MysqlExporterCharm(CharmBase):
         except CharmError as error:
             raise CharmError(error.message) from error
 
-    def _get_mysql_uri(self, event=None) -> str:
+    def _get_mysql_uri(self) -> str:
         """Return MySQL uri.
 
         Raises:
             CharmError: if no MySQL uri.
         """
-        relation: dict = self._get_mysql_relation(event)
         if configuration := self._get_mysql_config():
-            if relation:
-                raise CharmError("MySQL cannot added via relation and via config at the same time")
             host = f'{configuration.replace("mysql://", "").split("/")[0].replace("@", "@(")})'
             return f"{host}/"
-        if not relation:
-            raise CharmError(
-                "No MySQL uri added. MySQL uri needs to be added via relation or via config"
-            )
-        username = "root"  # relation.get("username")
-        password = "4kKPGFlRoPngfgzn2cegrsIx"  # relation.get("password")
-        endpoints = relation.get("endpoints")
-        database = ""  # relation.get("database")
-        mysql_uri = f"{username}:{password}@({endpoints})/{database}"
-        return mysql_uri
+        raise CharmError("No MySQL uri added. MySQL uri needs to be added via config")
 
     def _validate_config(self) -> None:
         """Validate charm configuration.
@@ -183,7 +153,7 @@ class MysqlExporterCharm(CharmBase):
         """Handle changed configuration."""
         try:
             # Fetch the new config value
-            self.mysql_uri = self._get_mysql_uri(event)
+            self.mysql_uri = self._get_mysql_uri()
             self._configure_service(event)
             self._update_ingress_config()
         except CharmError as error:
@@ -194,7 +164,7 @@ class MysqlExporterCharm(CharmBase):
         """Handle the update-status event."""
         try:
             logger.debug("Validating update_status")
-            self.mysql_uri = self._get_mysql_uri(event)
+            self.mysql_uri = self._get_mysql_uri()
             check_container_ready(self.container)
             check_service_active(self.container, self.pebble_service_name)
             self.unit.status = ActiveStatus()
@@ -205,16 +175,8 @@ class MysqlExporterCharm(CharmBase):
     def _on_db_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Handle relation broken event."""
         try:
-            self.mysql_uri = self._get_mysql_uri(event)
+            self.mysql_uri = self._get_mysql_uri()
             self._configure_service(event)
-        except CharmError as error:
-            self.unit.status = error.status
-
-    def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
-        """Event triggered when a database was created for this application via relation."""
-        try:
-            self.mysql_uri = self._get_mysql_uri(event)
-            self._on_config_changed(event)
         except CharmError as error:
             self.unit.status = error.status
 

@@ -7,7 +7,6 @@ import unittest
 
 import ops.testing
 from charm import MysqlExporterCharm
-from charms.data_platform_libs.v0.data_interfaces import DatabaseCreatedEvent
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 
@@ -53,9 +52,7 @@ class TestCharm(unittest.TestCase):
         """Test to check the plan created is the expected one."""
         # Expected plan after Pebble ready with default config
         expected_plan = {}
-        error_message = (
-            "No MySQL uri added. MySQL uri needs to be added via relation or via config"
-        )
+        error_message = "No MySQL uri added. MySQL uri needs to be added via config"
         self.harness.container_pebble_ready("mysql-exporter")
         updated_plan = self.harness.get_container_pebble_plan("mysql-exporter").to_dict()
         self.assertEqual(expected_plan, updated_plan)
@@ -91,53 +88,15 @@ class TestCharm(unittest.TestCase):
 
     def test_config_log_changed_no_mysql(self):
         """Valid config change for log-level parameter."""
-        error_message = (
-            "No MySQL uri added. MySQL uri needs to be added via relation or via config"
-        )
+        error_message = "No MySQL uri added. MySQL uri needs to be added via config"
         self.harness.set_can_connect("mysql-exporter", True)
         self.harness.update_config({"log-level": "INFO"})
         self.assertEqual(self.harness.model.unit.status, BlockedStatus(error_message))
 
     def test_no_config(self):
-        """No database related or configured in the charm."""
+        """No database configured in the charm."""
         self.harness.set_can_connect("mysql-exporter", True)
         self.harness.charm.on.config_changed.emit()
-        self.assertIsInstance(self.harness.model.unit.status, BlockedStatus)
-
-    def test_mysql_relation(self):
-        """Database related in the charm."""
-        self.harness.set_can_connect("mysql-exporter", True)
-        relation_id = self.harness.add_relation("mysql", "mysql")
-        self.harness.add_relation_unit(relation_id, "mysql/0")
-        self.harness.update_relation_data(
-            relation_id,
-            "mysql",
-            {
-                "endpoints": "mysql-k8s-primary.testing.svc.cluster.local:3306",
-                "username": "username",
-                "password": "password",
-            },
-        )
-        self.harness.charm.on.config_changed.emit()
-        self.assertIsInstance(self.harness.model.unit.status, ActiveStatus)
-
-    def test_mysql_relation_broken(self):
-        """Remove relation of the database, no database in config."""
-        self.harness.set_can_connect("mysql-exporter", True)
-        relation_id = self.harness.add_relation("mysql", "mysql")
-        self.harness.add_relation_unit(relation_id, "mysql/0")
-        self.harness.update_relation_data(
-            relation_id,
-            "mysql",
-            {
-                "endpoints": "mysql-k8s-primary.testing.svc.cluster.local:3306",
-                "username": "username",
-                "password": "password",
-            },
-        )
-        self.harness.charm.on.config_changed.emit()
-        self.assertIsInstance(self.harness.model.unit.status, ActiveStatus)
-        self.harness.remove_relation(relation_id)
         self.assertIsInstance(self.harness.model.unit.status, BlockedStatus)
 
     def test_update_status_no_mysql(self):
@@ -151,69 +110,4 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect("mysql-exporter", True)
         self.harness.update_config({"mysql-uri": "mysql://username:password@endpoints/"})
         self.harness.charm.on.update_status.emit()
-        self.assertIsInstance(self.harness.model.unit.status, ActiveStatus)
-
-    def test_db_creation(self):
-        """DB creation test successful."""
-        self.harness.set_can_connect("mysql-exporter", True)
-        relation_id = self.harness.add_relation("mysql", "mysql")
-        self.harness.add_relation_unit(relation_id, "mysql/0")
-        self.harness.update_relation_data(
-            relation_id,
-            "mysql",
-            {
-                "endpoints": "mysql-k8s-primary.testing.svc.cluster.local:3306",
-                "username": "username",
-                "password": "password",
-                "database": "osm-mysql-exporter",
-            },
-        )
-        self.harness.charm._on_database_created(DatabaseCreatedEvent)
-        self.assertIsInstance(self.harness.model.unit.status, ActiveStatus)
-
-    def test_db_creation_failed(self):
-        """DB creation failedtest."""
-        error_message = (
-            "No MySQL uri added. MySQL uri needs to be added via relation or via config"
-        )
-        self.harness.set_can_connect("mysql-exporter", True)
-        self.harness.charm._on_database_created(DatabaseCreatedEvent)
-        self.assertEqual(self.harness.model.unit.status, BlockedStatus(error_message))
-
-    def test_db_duplicated(self):
-        """Connected to MySQL through config and relation."""
-        error_message = "MySQL cannot added via relation and via config at the same time"
-        self.harness.set_can_connect("mysql-exporter", True)
-        relation_id = self.harness.add_relation("mysql", "mysql")
-        self.harness.add_relation_unit(relation_id, "mysql/0")
-        self.harness.update_relation_data(
-            relation_id,
-            "mysql",
-            {
-                "endpoints": "mysql-k8s-primary.testing.svc.cluster.local:3306",
-                "username": "username",
-                "password": "password",
-            },
-        )
-        self.harness.update_config({"mysql-uri": "mysql://username:password@endpoints/"})
-        self.assertEqual(self.harness.model.unit.status, BlockedStatus(error_message))
-
-    def test_db_duplicated_and_relation_broken(self):
-        """Connected to MySQL through config and relation and then remove the relation."""
-        error_message = "MySQL cannot added via relation and via config at the same time"
-        self.harness.set_can_connect("mysql-exporter", True)
-        relation_id = self.harness.add_relation("mysql", "mysql")
-        self.harness.add_relation_unit(relation_id, "mysql/0")
-        self.harness.update_relation_data(
-            relation_id,
-            "mysql",
-            {
-                "endpoints": "mysql-k8s-primary.testing.svc.cluster.local:3306",
-                "username": "username",
-                "password": "password",
-            },
-        )
-        self.harness.update_config({"mysql-uri": "mysql://username:password@endpoints/"})
-        self.assertEqual(self.harness.model.unit.status, BlockedStatus(error_message))
-        self.harness.remove_relation(relation_id)
         self.assertIsInstance(self.harness.model.unit.status, ActiveStatus)

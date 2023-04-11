@@ -22,7 +22,5 @@ provides:
   grafana-dashboard:
     interface: grafana_dashboard
 requires:
-  mysql:
-    interface: mysql_client
   ingress:
     interface: ingress
