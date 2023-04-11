@@ -22,7 +22,7 @@ from charms.osm_libs.v0.utils import (
     check_service_active,
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from ops.charm import CharmBase, RelationBrokenEvent
+from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 
@@ -155,14 +155,6 @@ class MysqlExporterCharm(CharmBase):
             self.unit.status = ActiveStatus()
         except CharmError as error:
             logger.debug(error.message)
-            self.unit.status = error.status
-
-    def _on_db_relation_broken(self, event: RelationBrokenEvent) -> None:
-        """Handle relation broken event."""
-        try:
-            self.mysql_uri = self._get_mysql_uri()
-            self._configure_service(event)
-        except CharmError as error:
             self.unit.status = error.status
 
     def _update_ingress_config(self) -> None:
