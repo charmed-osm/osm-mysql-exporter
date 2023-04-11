@@ -17,7 +17,7 @@ APP_NAME = METADATA["name"]
 APP_CONFIG = {"external-hostname": "mysql-exporter.127.0.0.1.nip.io"}
 INGRESS_CHARM = "nginx-ingress-integrator"
 INGRESS_APP = "ingress"
-APPS = [INGRESS_APP, APP_NAME]
+APPS = [INGRESS_APP]
 
 
 @pytest.mark.abort_on_fail
