@@ -1,0 +1,23 @@
+# This file defines charm config options, and populates the Configure tab on Charmhub.
+# If your charm does not require configuration options, delete this file entirely.
+#
+# See https://juju.is/docs/config for guidance.
+
+options:
+  mysql-uri:
+    type: string
+    description: MySQL URI (external database)
+  external-hostname:
+    type: string
+    default: ""
+    description: |
+      The url that will be configured in the Kubernetes ingress.
+
+      The easiest way of configuring the external-hostname without having the DNS setup is by using
+      a Wildcard DNS like nip.io constructing the url like so:
+        - mysql-exporter.127.0.0.1.nip.io (valid within the K8s cluster node)
+        - mysql-exporter.<k8s-worker-ip>.nip.io (valid from outside the K8s cluster node)
+
+      This option is only applicable when the Kubernetes cluster has nginx ingress configured
+      and the charm is related to the nginx-ingress-integrator.
+      See more: https://charmhub.io/nginx-ingress-integrator
